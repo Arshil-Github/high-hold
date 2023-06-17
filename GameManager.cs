@@ -31,7 +31,7 @@ public class GameManager : MonoBehaviour
     public bool HasSetHighestScore = false;
     private void Start()
     {
-        actionSlider.maxValue = abar_maxValue;
+        /*actionSlider.maxValue = abar_maxValue;
         actionSlider.value = abar_maxValue / 2;
         abar_value = abar_maxValue / 2;
 
@@ -50,19 +50,19 @@ public class GameManager : MonoBehaviour
         coin_Text.text = coins.ToString();
 
         score = 0;
-        score_Text.text = score.ToString();
+        score_Text.text = score.ToString();*/
     }
     public void StartCoolDown()
     {
-        StartCoroutine(ReduceCoolDownBarValue());
+        //StartCoroutine(ReduceCoolDownBarValue());
     }
     IEnumerator ReduceCoolDownBarValue()
     {
         yield return new WaitForSeconds(time / 2);
-        if (coolDownSlider.value <= 0)
+        /*if (coolDownSlider.value <= 0)
         {
-            /*coolDownSlider.value = coolDownTime;
-            GameObject.FindGameObjectWithTag("Player").GetComponent<PlayerMovement>().startCoolDown = false;*/
+            *//*coolDownSlider.value = coolDownTime;
+            GameObject.FindGameObjectWithTag("Player").GetComponent<PlayerMovement>().startCoolDown = false;*//*
 
             StartCoroutine(UpCoolDownBarValue());
         }
@@ -70,12 +70,12 @@ public class GameManager : MonoBehaviour
         {
             coolDownSlider.value -= coolDownSliderSpeed;
             StartCoroutine(ReduceCoolDownBarValue());
-        }
+        }*/
     }
     IEnumerator UpCoolDownBarValue()
     {
         yield return new WaitForSeconds(time / 2);
-        if (coolDownSlider.value > coolDownTime)
+        /*if (coolDownSlider.value > coolDownTime)
         {
             coolDownSlider.value = coolDownTime;
             GameObject.FindGameObjectWithTag("Player").GetComponent<PlayerMovement>().startCoolDown = false;
@@ -84,12 +84,12 @@ public class GameManager : MonoBehaviour
         {
             coolDownSlider.value += coolDownSliderSpeed;
             StartCoroutine(UpCoolDownBarValue());
-        }
+        }*/
     }
 
     public void FixedUpdate()
     {
-        actionSlider.value = abar_value;
+        /*actionSlider.value = abar_value;
 
         if (abar_value > abar_maxValue / 2)
         {
@@ -98,20 +98,20 @@ public class GameManager : MonoBehaviour
         else
         {
             currentState = barState.ChangeDirection;
-        }
+        }*/
     }
 
     public void AddCoin(int number)
     {
-        coins += number;
+        /*coins += number;
         coin_Text.text = coins.ToString();
 
-        PlayerPrefs.SetInt("Coins", coins);
+        PlayerPrefs.SetInt("Coins", coins);*/
 
     }
     public void AddScore(int number)
     {
-        score += number;
+        /*score += number;
         score_Text.text = score.ToString();
 
         if (PlayerPrefs.HasKey("HighestScore"))
@@ -125,12 +125,12 @@ public class GameManager : MonoBehaviour
         else
         {
             PlayerPrefs.SetInt("HighestScore", score);
-        }
+        }*/
     }
     IEnumerator ReduceActionBarValue()
     {
         yield return new WaitForSeconds(time);
-        if (abar_value >= abar_maxValue || abar_value <= 0)
+        /*if (abar_value >= abar_maxValue || abar_value <= 0)
         {
             abar_speed *= -1;
         }
@@ -139,16 +139,16 @@ public class GameManager : MonoBehaviour
         {
             abar_value += abar_speed;
         }
-        StartCoroutine(ReduceActionBarValue());
+        StartCoroutine(ReduceActionBarValue());*/
     }
     public void gameOver()
     {
-        pause = true;
-        StartCoroutine(showGOwithDelay());
+        /*pause = true;
+        StartCoroutine(showGOwithDelay());*/
     }
     IEnumerator showGOwithDelay()
     {
         yield return new WaitForSeconds(gameOverScreenShowDelay);
-        gameOverScreen.gameObject.SetActive(true);
+        //gameOverScreen.gameObject.SetActive(true);
     }
 }

@@ -12,7 +12,7 @@ public class SkinSystem : MonoBehaviour
 
     private void Start()
     {
-        AllSkin = SkinInfoHolder.Instance.AllSkins;
+        /*//AllSkin = SkinInfoHolder.Instance.AllSkins;
         currentSkinIndex = SkinInfoHolder.Instance.currentSkinIndex;
         foreach(Skin s in AllSkin)
         {
@@ -21,6 +21,6 @@ public class SkinSystem : MonoBehaviour
                 player.currentSkin = s;
                 return;
             }
-        }
+        }*/
     }
 }

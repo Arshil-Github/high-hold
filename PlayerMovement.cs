@@ -39,15 +39,16 @@ public class PlayerMovement : MonoBehaviour
     public void Start()
     {
         rb = GetComponent<Rigidbody2D>(); //Get the rb Component of Player
-        attackDots.gameObject.SetActive(false);
+        /*attackDots.gameObject.SetActive(false);
         Invoke("ApplySkin", 0.2f);
 
-        audioS = gameObject.GetComponent<AudioSource>();
-
+        audioS = gameObject.GetComponent<AudioSource>();*/
+        currentState = playerState.normal;
+        rb.drag = normalDrag;
     }
     public void ApplySkin()
     {
-        Circle.sprite = currentSkin.sprite;
+        /*Circle.sprite = currentSkin.sprite;
         Circle.color = currentSkin.color;
 
         pf_bullet = currentSkin.bullet;
@@ -55,7 +56,7 @@ public class PlayerMovement : MonoBehaviour
         sfx_Attack = currentSkin.attackSFX;
         sfx_coinPickup = currentSkin.coinPickup;
 
-        pf_deatheffect = currentSkin.burstEffect;
+        pf_deatheffect = currentSkin.burstEffect;*/
     }
 
 
@@ -63,24 +64,39 @@ public class PlayerMovement : MonoBehaviour
     Vector2 swipeStart;
     Vector2 swipeEnd;
     Vector2 swipe;
+
     [Tooltip("The Post Processing manager")]public PPManager postProcessor;
+    public float swipeRange;
+    public float dashForce;
+    public float maxSwipeBooster;
+    public float swipeTime;
+    public float normalDrag;
+    public float chargedDrag;
+    public float swipeCooldown;
 
-
-
+    bool isTouched;
+    float currentSwipeBooster;
+    bool canSwipe = true;
+    enum playerState
+    {
+        normal,
+        charged
+    }
+    playerState currentState;
 
 
     public void FixedUpdate()
     {
 
-        if (!Stop && Action == "Move")
+        /*if (!Stop && Action == "Move")
         {
             transform.position += mover.up * speed * Time.deltaTime;
         }
         else if (Action == "Attack" && !Stop)
         {
-            /*GameObject bullet = Instantiate(pf_bullet, attackDots.position, attackDots.rotation);
+            *//*GameObject bullet = Instantiate(pf_bullet, attackDots.position, attackDots.rotation);
             bullet.GetComponent<Bullet>().Target = GetClosestEnemy(GameObject.FindGameObjectsWithTag("Enemy"));
-            bullet.GetComponent<Bullet>().rb.AddForce((bullet.transform.up) * bulletForce, ForceMode2D.Impulse);*/
+            bullet.GetComponent<Bullet>().rb.AddForce((bullet.transform.up) * bulletForce, ForceMode2D.Impulse);*//*
 
             Action = "Move";
         }
@@ -91,67 +107,84 @@ public class PlayerMovement : MonoBehaviour
         else if(Stop && Action == "ChangeAttackDir")
         {
             attackDots.Rotate(Vector3.forward * Time.deltaTime * rotationSpeed);
-        }
+        }*/
+
+        
     }
     public bool startCoolDown = false;
     public void Update()
     {
-
-        if (Input.GetKeyDown(KeyCode.A) && !startCoolDown)
-        {
+        //Get the Touch Input and do thigs ACcodingly
+        if (Input.touchCount != 0 && Input.GetTouch(0).phase == TouchPhase.Began)
             TouchDown();
-        }
-        else if(Input.GetKeyUp(KeyCode.A))
-        {
+        if (Input.touchCount != 0 && Input.GetTouch(0).phase == TouchPhase.Ended)
             TouchUp();
-        }
 
+        //This to add a little boost when the player swipe for longer distance
+        if(isTouched && currentSwipeBooster < maxSwipeBooster)
+        {
+            currentSwipeBooster += 0.1f;
+        }
     }
     
     public void TouchDown()
     {
+        if (!canSwipe)
+            return;
         //Called when the swipe Starts
-        Stop = true;
+        currentSwipeBooster = 1;
+        isTouched = true;
 
-        Bg_Sound.Instance.StopMusic();
+        //VElocity to nill
+        rb.velocity = Vector2.zero;
 
-        if (gm.currentState == GameManager.barState.ChangeDirection)
-        {
-            Action = "ChangeDirection";
-            postProcessing_slowedDown.SetActive(true);
-        }
-        else if (gm.currentState == GameManager.barState.Attack)
-        {
-            attackDots.gameObject.SetActive(true);
-
-            Action = "ChangeAttackDir";
-            postProcessing_attack.SetActive(true);
-        }
-        gm.pause = true;
-
-
+        //Disable the text "Hold to continue" at the start
         if (tutorialText != null)
         {
             tutorialText.SetActive(false);
 
         }
+        //Stop Time
+        Stop = true;
+        gm.pause = true;
+        Bg_Sound.Instance.StopMusic();
 
+        //  Changing post processing this can be better done by creating a post process Manager Comeback here
+            postProcessing_slowedDown.SetActive(true);
+
+        //Goes to each enemy and stops time for them
         foreach (GameObject enemy in GameObject.FindGameObjectsWithTag("Enemy"))
         {
-            if(enemy.TryGetComponent<Enemy>(out Enemy e))
-            {
-                enemy.GetComponent<Enemy>().slow = true;
-            }
-            else if (enemy.TryGetComponent<Bomber_Enemy>(out Bomber_Enemy f))
-            {
-                enemy.GetComponent<Bomber_Enemy>().slow = true;
-            }
+            enemy.GetComponent<Enemy>().slow = true;
         }
+        //Collect Data on Starting Position
+
+        swipeStart = Input.GetTouch(0).position;
+
+        /*
+        //This do the Action on the bar
+        if (gm.currentState == GameManager.barState.ChangeDirection)
+        {
+            //Show Dirn Pointer
+            Action = "ChangeDirection";
+            postProcessing_slowedDown.SetActive(true);
+        }
+        else if (gm.currentState == GameManager.barState.Attack)
+        {
+            //Show Attack Pointer
+            attackDots.gameObject.SetActive(true);
+
+            Action = "ChangeAttackDir";
+            postProcessing_attack.SetActive(true);
+        }*/
     }
     public void TouchUp()
     {
+        if (!canSwipe)
+            return;
         //Called when the player lifts his finger ie End of the Swipe
 
+        isTouched = false;
 
         //Resume Time
         Stop = false;
@@ -180,7 +213,23 @@ public class PlayerMovement : MonoBehaviour
 
         //Finish the swipe track and add force Accodingly
 
-            
+        swipeEnd = Input.GetTouch(0).position;
+
+        swipe = swipeEnd - swipeStart;
+
+        if(swipe.magnitude >= swipeRange)
+        {
+            //Add a force in opposite direction of swipe vector
+            rb.AddForce(dashForce * currentSwipeBooster * (-swipe / swipe.magnitude), ForceMode2D.Impulse);
+        }
+
+        //Change State to Boosted
+
+        ChangeState(playerState.charged);
+
+        //Start a coroutibne to turn off canSwipe
+        StartCoroutine(SwitchCanSwipe());
+
 
         /*if (!startCoolDown && Stop)
         {
@@ -194,6 +243,7 @@ public class PlayerMovement : MonoBehaviour
         {
             Action = "Move";
         }
+
         else if (gm.currentState == GameManager.barState.Attack)
         {
             Action = "Attack";
@@ -204,25 +254,66 @@ public class PlayerMovement : MonoBehaviour
     }
     private void OnTriggerEnter2D(Collider2D collision)
     {
-        if (collision.CompareTag("coin"))
+        /*if (collision.CompareTag("coin"))
         {
             audioS.clip = sfx_coinPickup;
             audioS.Play();
             gm.AddCoin(1);
             Destroy(collision.gameObject);
-        }
+        }*/
     }
-
+    private void ChangeState(playerState newState)
+    {
+        currentState = newState;
+        if(currentState == playerState.normal)
+            EnterNormalState();
+        else if(currentState == playerState.charged)
+            EnterChargedState();
+    }
     public void die()
     {
-        if (!gm.GetComponent<PowerUps>().isShieldOn)
+        /*if (!gm.GetComponent<PowerUps>().isShieldOn)
         {
             GameObject a = Instantiate(pf_deatheffect, transform.position, Quaternion.identity);
             Destroy(gameObject);
             FindObjectOfType<GameManager>().gameOver();
             Destroy(a, a.GetComponent<ParticleSystem>().time + 0.5f);
-        }
+        }*/
     }
+
+    private void EnterNormalState()
+    {
+        //This is for the Charged State
+        rb.drag = normalDrag;
+        Circle.color = Color.white;
+    }
+    private void EnterChargedState()
+    {
+        //This is the Charged State
+        //Write all the graphics changes of Charged state here
+
+        rb.drag = chargedDrag;
+        Circle.color = Color.black;
+
+        StartCoroutine(chargedCoolDown());
+
+    }
+
+    IEnumerator chargedCoolDown()
+    {
+        yield return new WaitForSeconds(swipeTime);
+        ChangeState(playerState.normal);
+    }
+    IEnumerator SwitchCanSwipe()
+    {
+        canSwipe = false;
+        yield return new WaitForSeconds(swipeCooldown);
+        canSwipe = true;
+    }
+
+
+
+
     Transform GetClosestEnemy(GameObject[] enemies)
     {
         Transform bestTarget = null;
@@ -240,5 +331,21 @@ public class PlayerMovement : MonoBehaviour
         }
 
         return bestTarget;
+    }
+
+    //This Section is to be deleted in the final build. use this to make your life easier
+    Rect rect = new Rect(0, 0, 300, 100);
+    Vector3 offset = new Vector3(0f, 0f, 0f); // height above the target position
+    void OnGUI()
+    {
+        Vector2 point = Camera.main.WorldToScreenPoint(transform.position + offset);
+        rect.x = point.x;
+        rect.y = Screen.height - point.y - rect.height; // bottom left corner set to the 3D point
+
+        if(rb.velocity != Vector2.zero)
+        {
+            GUI.Label(rect, rb.velocity.magnitude.ToString()); // display its name, or other string
+        }
+
     }
 }
