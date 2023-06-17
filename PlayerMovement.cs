@@ -4,12 +4,13 @@ using UnityEngine;
 
 public class PlayerMovement : MonoBehaviour
 {
-    public float speed;
-    public float rotationSpeed;
-    public Rigidbody2D rb;
-    public bool Stop;
-    public Vector3 moveDir;
-    public string Action;
+    public float speed; //Speed
+    public float rotationSpeed; //This rotates when the player holds the screen
+    Rigidbody2D rb; //Can be Deleted?
+
+    [HideInInspector]public bool Stop;
+    [HideInInspector]public Vector3 moveDir; //Dirn in which we want to move
+    [HideInInspector]public string Action;
 
     public GameObject pf_bullet;
     public GameManager gm;
@@ -37,6 +38,7 @@ public class PlayerMovement : MonoBehaviour
     public GameObject tutorialText;
     public void Start()
     {
+        rb = GetComponent<Rigidbody2D>(); //Get the rb Component of Player
         attackDots.gameObject.SetActive(false);
         Invoke("ApplySkin", 0.2f);
 
@@ -55,17 +57,30 @@ public class PlayerMovement : MonoBehaviour
 
         pf_deatheffect = currentSkin.burstEffect;
     }
+
+
+
+    Vector2 swipeStart;
+    Vector2 swipeEnd;
+    Vector2 swipe;
+    [Tooltip("The Post Processing manager")]public PPManager postProcessor;
+
+
+
+
+
     public void FixedUpdate()
     {
+
         if (!Stop && Action == "Move")
         {
             transform.position += mover.up * speed * Time.deltaTime;
         }
         else if (Action == "Attack" && !Stop)
         {
-            GameObject bullet = Instantiate(pf_bullet, attackDots.position, attackDots.rotation);
+            /*GameObject bullet = Instantiate(pf_bullet, attackDots.position, attackDots.rotation);
             bullet.GetComponent<Bullet>().Target = GetClosestEnemy(GameObject.FindGameObjectsWithTag("Enemy"));
-            bullet.GetComponent<Bullet>().rb.AddForce((bullet.transform.up) * bulletForce, ForceMode2D.Impulse);
+            bullet.GetComponent<Bullet>().rb.AddForce((bullet.transform.up) * bulletForce, ForceMode2D.Impulse);*/
 
             Action = "Move";
         }
@@ -92,49 +107,10 @@ public class PlayerMovement : MonoBehaviour
         }
 
     }
-    public void TouchUp()
-    {
-        if (!startCoolDown && Stop)
-        {
-            gm.GetComponent<GameManager>().StartCoolDown();
-            startCoolDown = true;
-        }
-        Stop = false;
-
-        Bg_Sound.Instance.ResumeMusic();
-
-        attackDots.gameObject.SetActive(false);
-
-        postProcessing_slowedDown.SetActive(false);
-        postProcessing_attack.SetActive(false);
-
-        if (gm.currentState == GameManager.barState.ChangeDirection)
-        {
-            Action = "Move";
-        }
-        else if (gm.currentState == GameManager.barState.Attack)
-        {
-            Action = "Attack";
-            audioS.clip = sfx_Attack;
-            audioS.Play();
-
-        }
-        gm.pause = false;
-
-        foreach (GameObject enemy in GameObject.FindGameObjectsWithTag("Enemy"))
-        {
-            if (enemy.TryGetComponent<Enemy>(out Enemy e))
-            {
-                enemy.GetComponent<Enemy>().slow = false;
-            }
-            else if (enemy.TryGetComponent<Bomber_Enemy>(out Bomber_Enemy f))
-            {
-                enemy.GetComponent<Bomber_Enemy>().slow = false;
-            }
-        }
-    }
+    
     public void TouchDown()
     {
+        //Called when the swipe Starts
         Stop = true;
 
         Bg_Sound.Instance.StopMusic();
@@ -171,6 +147,60 @@ public class PlayerMovement : MonoBehaviour
                 enemy.GetComponent<Bomber_Enemy>().slow = true;
             }
         }
+    }
+    public void TouchUp()
+    {
+        //Called when the player lifts his finger ie End of the Swipe
+
+
+        //Resume Time
+        Stop = false;
+        Bg_Sound.Instance.StartMusic(Bg_Sound.Instance.mainSong);
+        attackDots.gameObject.SetActive(false);
+
+        gm.pause = false;//Contacting the game manger object
+
+        //  Changing post processing this can be better done by creating a post process Manager Comeback here
+            postProcessing_slowedDown.SetActive(false);
+            postProcessing_attack.SetActive(false);
+
+
+        //Go to each enemy and resume them ----. This can be done in a better way
+        foreach (GameObject enemy in GameObject.FindGameObjectsWithTag("Enemy"))
+        {
+            if (enemy.TryGetComponent<Enemy>(out Enemy e))
+            {
+                enemy.GetComponent<Enemy>().slow = false;
+            }
+            else if (enemy.TryGetComponent<Bomber_Enemy>(out Bomber_Enemy f))
+            {
+                enemy.GetComponent<Bomber_Enemy>().slow = false;
+            }
+        }
+
+        //Finish the swipe track and add force Accodingly
+
+            
+
+        /*if (!startCoolDown && Stop)
+        {
+        // This is for controlling the cool down bar
+            gm.GetComponent<GameManager>().StartCoolDown();
+            startCoolDown = true;
+        }*/
+
+
+        /*if (gm.currentState == GameManager.barState.ChangeDirection)
+        {
+            Action = "Move";
+        }
+        else if (gm.currentState == GameManager.barState.Attack)
+        {
+            Action = "Attack";
+            audioS.clip = sfx_Attack;
+            audioS.Play();
+
+        }*/
     }
     private void OnTriggerEnter2D(Collider2D collision)
     {

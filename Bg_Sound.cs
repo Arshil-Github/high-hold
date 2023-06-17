@@ -20,12 +20,18 @@ public class Bg_Sound : MonoBehaviour
         }
     }
     #endregion
-    public AudioSource source;
-    public float volume;
+    public AudioClip mainSong;
+    public AudioClip intenseSong;
+
+    private AudioSource source; //Audio Source
+    [HideInInspector] public float volume;
+    AudioClip currentSong;
 
     public void Start()
     {
-        source = gameObject.GetComponent<AudioSource>();
+        source = GetComponent<AudioSource>();
+
+        //This is the volume is setted up in the SEttings
         if (PlayerPrefs.HasKey("volume"))
         {
             volume = PlayerPrefs.GetFloat("volume");
@@ -34,7 +40,9 @@ public class Bg_Sound : MonoBehaviour
         {
             volume = 1;
         }
-        ResumeMusic();
+
+
+        StartMusic(mainSong);
 
     }
     public void StopMusic()
@@ -45,8 +53,14 @@ public class Bg_Sound : MonoBehaviour
     {
         volume = PlayerPrefs.GetFloat("volume");
     }
-    public void ResumeMusic()
+    
+    public void StartMusic(AudioClip song)
     {
+        if (song == currentSong)
+            return;
+
+        source.clip = song;
+        currentSong = song;
         source.volume = volume;
     }
 }
