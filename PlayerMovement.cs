@@ -44,7 +44,7 @@ public class PlayerMovement : MonoBehaviour
 
         audioS = gameObject.GetComponent<AudioSource>();*/
         currentState = playerState.normal;
-        rb.drag = normalDrag;
+        rb.drag = data.normalDrag;
     }
     public void ApplySkin()
     {
@@ -66,17 +66,20 @@ public class PlayerMovement : MonoBehaviour
     Vector2 swipe;
 
     [Tooltip("The Post Processing manager")]public PPManager postProcessor;
-    public float swipeRange;
-    public float dashForce;
-    public float maxSwipeBooster;
-    public float swipeTime;
-    public float normalDrag;
-    public float chargedDrag;
-    public float swipeCooldown;
+
+    public PlayerData data;
+    public Transform dashIndicator;
 
     bool isTouched;
     float currentSwipeBooster;
     bool canSwipe = true;
+
+    bool _velToTerminal = false;
+    float _elapsedTime;
+    float _lerpDuration_velocity;
+    float _lerpDuration_dashScale;
+    Vector2 _initialVelocity;
+    Vector2 _finalVelocity;
     enum playerState
     {
         normal,
@@ -88,42 +91,50 @@ public class PlayerMovement : MonoBehaviour
     public void FixedUpdate()
     {
 
-        /*if (!Stop && Action == "Move")
-        {
-            transform.position += mover.up * speed * Time.deltaTime;
-        }
-        else if (Action == "Attack" && !Stop)
-        {
-            *//*GameObject bullet = Instantiate(pf_bullet, attackDots.position, attackDots.rotation);
-            bullet.GetComponent<Bullet>().Target = GetClosestEnemy(GameObject.FindGameObjectsWithTag("Enemy"));
-            bullet.GetComponent<Bullet>().rb.AddForce((bullet.transform.up) * bulletForce, ForceMode2D.Impulse);*//*
-
-            Action = "Move";
-        }
-        else if(Stop && Action == "ChangeDirection")
-        {
-            transform.Rotate(Vector3.forward * Time.deltaTime * rotationSpeed);
-        }
-        else if(Stop && Action == "ChangeAttackDir")
-        {
-            attackDots.Rotate(Vector3.forward * Time.deltaTime * rotationSpeed);
-        }*/
-
         
     }
     public bool startCoolDown = false;
     public void Update()
     {
         //Get the Touch Input and do thigs ACcodingly
-        if (Input.touchCount != 0 && Input.GetTouch(0).phase == TouchPhase.Began)
+        if (Input.touchCount != 0 && Input.GetTouch(0).phase == TouchPhase.Began && !isTouched)
             TouchDown();
         if (Input.touchCount != 0 && Input.GetTouch(0).phase == TouchPhase.Ended)
             TouchUp();
 
         //This to add a little boost when the player swipe for longer distance
-        if(isTouched && currentSwipeBooster < maxSwipeBooster)
+        if(isTouched && currentSwipeBooster < data.maxSwipeBooster)
         {
             currentSwipeBooster += 0.1f;
+        }
+
+        //This section is to for smoothing out the movement (the velocuty) from charged to boosted
+        if(_velToTerminal)
+        {
+            _elapsedTime += Time.deltaTime;
+            float percentageComplete = _elapsedTime / _lerpDuration_velocity;
+            rb.velocity = Vector2.Lerp(_initialVelocity, _finalVelocity, percentageComplete);
+            
+            //To stop this method
+            if(rb.velocity.magnitude <= data.terminalVelocity)
+            {
+                _velToTerminal = false;
+                _elapsedTime = 0;
+            }
+        }
+        //This section controls the height of the dash bar and change its orientation accordingly
+        if(isTouched)
+        {
+            //This is for adjusting scale
+/*
+            _elapsedTime += Time.deltaTime;
+            float percentageComplete = _elapsedTime / _lerpDuration_dashScale;
+            dashIndicator.transform.localScale = new Vector3(dashIndicator.localScale.x, Mathf.Lerp(1, 20, percentageComplete), dashIndicator.localScale.z);
+*/
+            //This is for rotation
+            Vector2 currentSwipe = Input.GetTouch(0).position - swipeStart;
+            float swipeAngle = AngleBetweenVector2(Vector2.zero, currentSwipe);
+            dashIndicator.eulerAngles = new Vector3(dashIndicator.eulerAngles.x, dashIndicator.eulerAngles.y, swipeAngle + 90);
         }
     }
     
@@ -131,9 +142,17 @@ public class PlayerMovement : MonoBehaviour
     {
         if (!canSwipe)
             return;
+        
         //Called when the swipe Starts
         currentSwipeBooster = 1;
+
+        //Change Dash Indicator Orientation
+        _elapsedTime = 0;
         isTouched = true;
+        _lerpDuration_dashScale = data.swipeTime;
+        dashIndicator.gameObject.SetActive(true);
+
+
 
         //VElocity to nill
         rb.velocity = Vector2.zero;
@@ -161,30 +180,17 @@ public class PlayerMovement : MonoBehaviour
 
         swipeStart = Input.GetTouch(0).position;
 
-        /*
-        //This do the Action on the bar
-        if (gm.currentState == GameManager.barState.ChangeDirection)
-        {
-            //Show Dirn Pointer
-            Action = "ChangeDirection";
-            postProcessing_slowedDown.SetActive(true);
-        }
-        else if (gm.currentState == GameManager.barState.Attack)
-        {
-            //Show Attack Pointer
-            attackDots.gameObject.SetActive(true);
-
-            Action = "ChangeAttackDir";
-            postProcessing_attack.SetActive(true);
-        }*/
     }
     public void TouchUp()
     {
-        if (!canSwipe)
+        if (!canSwipe && !isTouched)
             return;
         //Called when the player lifts his finger ie End of the Swipe
 
+        dashIndicator.gameObject.SetActive(false);
+
         isTouched = false;
+        _elapsedTime = 0;
 
         //Resume Time
         Stop = false;
@@ -217,10 +223,10 @@ public class PlayerMovement : MonoBehaviour
 
         swipe = swipeEnd - swipeStart;
 
-        if(swipe.magnitude >= swipeRange)
+        if(swipe.magnitude >= data.swipeRange)
         {
             //Add a force in opposite direction of swipe vector
-            rb.AddForce(dashForce * currentSwipeBooster * (-swipe / swipe.magnitude), ForceMode2D.Impulse);
+            rb.AddForce(data.dashForce * currentSwipeBooster * (-swipe / swipe.magnitude), ForceMode2D.Impulse);
         }
 
         //Change State to Boosted
@@ -231,36 +237,16 @@ public class PlayerMovement : MonoBehaviour
         StartCoroutine(SwitchCanSwipe());
 
 
-        /*if (!startCoolDown && Stop)
-        {
-        // This is for controlling the cool down bar
-            gm.GetComponent<GameManager>().StartCoolDown();
-            startCoolDown = true;
-        }*/
-
-
-        /*if (gm.currentState == GameManager.barState.ChangeDirection)
-        {
-            Action = "Move";
-        }
-
-        else if (gm.currentState == GameManager.barState.Attack)
-        {
-            Action = "Attack";
-            audioS.clip = sfx_Attack;
-            audioS.Play();
-
-        }*/
     }
     private void OnTriggerEnter2D(Collider2D collision)
     {
-        /*if (collision.CompareTag("coin"))
+        if (collision.CompareTag("coin"))
         {
             audioS.clip = sfx_coinPickup;
             audioS.Play();
             gm.AddCoin(1);
             Destroy(collision.gameObject);
-        }*/
+        }
     }
     private void ChangeState(playerState newState)
     {
@@ -284,30 +270,38 @@ public class PlayerMovement : MonoBehaviour
     private void EnterNormalState()
     {
         //This is for the Charged State
-        rb.drag = normalDrag;
+        rb.drag = data.normalDrag;
         Circle.color = Color.white;
+
+        //Gradually Change velocity to terminal velocity
+        _initialVelocity = rb.velocity;
+        _finalVelocity = data.terminalVelocity * (rb.velocity / rb.velocity.magnitude);
+        _elapsedTime = 0;
+        _lerpDuration_velocity = 0.5f;
+        _velToTerminal = true;
+
     }
     private void EnterChargedState()
     {
         //This is the Charged State
         //Write all the graphics changes of Charged state here
 
-        rb.drag = chargedDrag;
+        rb.drag = data.chargedDrag;
         Circle.color = Color.black;
 
         StartCoroutine(chargedCoolDown());
-
     }
 
     IEnumerator chargedCoolDown()
     {
-        yield return new WaitForSeconds(swipeTime);
+        yield return new WaitForSeconds(data.swipeTime);
+        //This will be called when charged state ends
         ChangeState(playerState.normal);
     }
     IEnumerator SwitchCanSwipe()
     {
         canSwipe = false;
-        yield return new WaitForSeconds(swipeCooldown);
+        yield return new WaitForSeconds(data.swipeCooldown);
         canSwipe = true;
     }
 
@@ -331,6 +325,24 @@ public class PlayerMovement : MonoBehaviour
         }
 
         return bestTarget;
+    }
+
+    private float AngleBetweenVector2(Vector2 vec1, Vector2 vec2)
+    {
+        //Take Difference(Line) between two vectors
+        Vector2 diference = vec2 - vec1;
+        float sign = (vec2.y < vec1.y) ? -1.0f : 1.0f;
+
+        //Add 180 and calc from left if vec2 < vec1 : 3rd and 4th Quadrant
+        if (sign == -1f)
+        {
+            return Vector2.Angle(Vector2.left, diference) + 180;
+        }
+        else
+        {
+            return Vector2.Angle(Vector2.right, diference);
+        }
+
     }
 
     //This Section is to be deleted in the final build. use this to make your life easier
